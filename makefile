@@ -1,18 +1,23 @@
-# Recursively finds all subdirectories
-SUBDIRS := $(wildcard */)
+CXX = clang++
+CXXFLAGS = -std=c++11 -Werror -Wsign-conversion -g
+VALGRIND_FLAGS = -v --leak-check=full --show-leak-kinds=all --error-exitcode=99
 
-# Define the default target
-all: $(SUBDIRS)
+SOURCES = ttt.cpp 
+OBJECTS = $(SOURCES:.cpp=.o)
+EXECUTABLE = ttt
 
-# Rule to build all subdirectories
-$(SUBDIRS):
-	@$(MAKE) -C $@
+.PHONY: all clean valgrind
 
-# Clean rule to clean all subdirectories
+all: $(EXECUTABLE)
+
+$(EXECUTABLE): $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
+%.o: %.c
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+valgrind: $(EXECUTABLE)
+	valgrind $(VALGRIND_FLAGS) ./$(EXECUTABLE)
+
 clean:
-	@for dir in $(SUBDIRS); do \
-	$(MAKE) -C $$dir clean; \
-	done
-
-# Phony targets to avoid conflicts with file names
-.PHONY: all clean $(SUBDIRS)
+	rm -f $(EXECUTABLE) $(OBJECTS)
