@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <unordered_set>
+#include <cstring>
 
 using namespace std;
 
@@ -54,6 +55,11 @@ int main(int argc, char* argv[]) {
     string comStrategy = argv[1];
     if (!isValidStrategy(comStrategy)) { // Checking if the strategy meets the requirments
         cout << "Error: strategy is invalid" << endl;
+        return 1;
+    }
+
+    if(strlen(argv[1])!=9){
+        cout << "Error: input is too long" << endl;
         return 1;
     }
 
