@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -77,7 +78,12 @@ int main(int argc, char* argv[]) {
         cin >> humanMove;
         humanMove -= 1;
 
-        if (humanMove < 1 || humanMove > 9 || gameBoard[humanMove] != false) {
+        if(humanMove==1){
+            humanMove++;
+        }
+
+        if (humanMove < 1 || humanMove > 9) {
+            cout << humanMove << endl;
             cout << "Error: homanMove is invalid" << endl;
             return 1;
         }
