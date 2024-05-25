@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
 
         if (humanMove < 1 || humanMove > 9) {
             cout << humanMove << endl;
-            cout << "Error: homanMove is invalid" << endl;
+            cout << "Error: humanMove is invalid" << endl;
             return 1;
         }
 
