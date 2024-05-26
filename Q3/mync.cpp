@@ -70,6 +70,11 @@ void startTCPClient(const char *hostname, int port, int &sockfd) {
         std::cerr << "Error: no such host" << std::endl;
         exit(0);
     }
+    // Set SO_REUSEADDR socket option
+    int opt = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        error("Error: setting socket option");
+    }
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     bcopy((char*)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, (size_t)server->h_length);
@@ -129,11 +134,12 @@ int main(int argc, char *argv[]) {
         std::cerr << "No execution command provided." << std::endl;
         return 1;
     }
-
+    
     pid_t pid = fork();
     std::cout << "fork start" << std::endl;
 
     if (pid == 0) {
+        std::cout << "parent start" << std::endl;
         if (input_set || both_set) {
             dup2(input_sockfd, STDIN_FILENO);
             close(input_sockfd);
@@ -148,6 +154,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     else if (pid > 0) {
+        std::cout << "child start" << std::endl;
         if (input_set || both_set) {
             close(server_sockfd);
             handleCommunication(input_sockfd, STDOUT_FILENO);
@@ -158,7 +165,11 @@ int main(int argc, char *argv[]) {
             close(output_sockfd);
             waitpid(pid, NULL, 0);
         }
-    } else {
+        execlp("/bin/sh", "sh", "-c", exec_command.c_str(), (char *)0);
+        std::cerr << "Failed to execute " << exec_command << std::endl;
+        return 1;
+    } 
+    else {
         std::cerr << "Failed to fork" << std::endl;
         return 1;
     }
