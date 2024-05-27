@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <string>
 #include <vector>
@@ -50,17 +49,20 @@ int findNextMove(const vector<char>& gameBoard, const string& comStrategy) {
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         cout << "Error: too much arguments" << endl;
+        fflush(stdout);
         return 1;
     }
 
     string comStrategy = argv[1];
     if (!isValidStrategy(comStrategy)) { // Checking if the strategy meets the requirments
         cout << "Error: strategy is invalid" << endl;
+        fflush(stdout);
         return 1;
     }
 
-    if(strlen(argv[1])!=9){
+    if(strlen(argv[1]) != 9){
         cout << "Error: input is too long" << endl;
+        fflush(stdout);
         return 1;
     }
 
@@ -72,38 +74,51 @@ int main(int argc, char* argv[]) {
     size_t move = (size_t)comStrategy[0] - '1'; // The MSB from the input
     gameBoard[move] = computer; // Sign the computer's turn on the game board
     cout << move + 1 << endl; // Move forward the next possition on the board
+    fflush(stdout);
 
     while (true) {
         size_t humanMove;
         cin >> humanMove;
+        if(gameBoard[humanMove]!=false){
+            cout << "position is taken" << endl;
+            fflush(stdout);
+            return 0;
+        }
         humanMove -= 1;
 
-        if(humanMove==1){
+        if(humanMove == 1){
             humanMove++;
+            cout << humanMove << endl;
+            fflush(stdout);
         }
 
         if (humanMove < 1 || humanMove > 9) {
             cout << humanMove << endl;
             cout << "Error: human Move is invalid" << endl;
+            fflush(stdout);
             return 1;
         }
 
         gameBoard[humanMove] = human; // After every turn check if there is a winner
         if (checkWin(gameBoard, human)) {
             cout << "I lost" << endl;
+            fflush(stdout);
             return 0;
         }
 
         move = (size_t)findNextMove(gameBoard, comStrategy);
         if (move == -1) {
             cout << "DRAW" << endl;
+            fflush(stdout);
             return 0;
         }
 
         gameBoard[move] = computer;
         cout << move + 1 << endl;
+        fflush(stdout);
         if (checkWin(gameBoard, computer)) {
             cout << "I win" << endl;
+            fflush(stdout);
             return 0;
         }
     }

@@ -100,7 +100,6 @@ void handleCommunication(int input_fd, int output_fd) {
 }
 
 int main(int argc, char *argv[]) {
-    std::cout << "test " << "\n";
     int input_sockfd = -1, output_sockfd = -1;
     int server_sockfd = -1, client_sockfd = -1;
     std::string exec_command;
@@ -136,43 +135,45 @@ int main(int argc, char *argv[]) {
     }
     
     pid_t pid = fork();
-    std::cout << "fork start" << std::endl;
-
     if (pid == 0) {
-        std::cout << "parent start" << std::endl;
+        // Child process
         if (input_set || both_set) {
             dup2(input_sockfd, STDIN_FILENO);
             close(input_sockfd);
+            fflush(stdin);
         }
         if (output_set || both_set) {
             dup2(output_sockfd, STDOUT_FILENO);
             close(output_sockfd);
-        }
-
-        execlp("/bin/sh", "sh", "-c", exec_command.c_str(), (char *)0);
-        std::cerr << "Failed to execute " << exec_command << std::endl;
-        return 1;
-    }
-    else if (pid > 0) {
-        std::cout << "child start" << std::endl;
-        if (input_set || both_set) {
-            close(server_sockfd);
-            handleCommunication(input_sockfd, STDOUT_FILENO);
-            close(input_sockfd);
-        }
-        if (output_set || both_set) {
-            handleCommunication(STDIN_FILENO, output_sockfd);
-            close(output_sockfd);
-            waitpid(pid, NULL, 0);
+            fflush(stdout);
         }
         execlp("/bin/sh", "sh", "-c", exec_command.c_str(), (char *)0);
         std::cerr << "Failed to execute " << exec_command << std::endl;
+        fflush(stdout);
         return 1;
     } 
-    else {
+    else if (pid > 0) {
+        // Parent process
+        if (input_set || both_set) {
+            close(server_sockfd);
+            //handleCommunication(input_sockfd, STDOUT_FILENO);
+            close(input_sockfd);
+            fflush(stdin);
+        }
+        if (output_set || both_set) {
+            //handleCommunication(STDIN_FILENO, output_sockfd);
+            close(output_sockfd);
+            waitpid(pid, NULL, 0);
+            fflush(stdout);
+        } else {
+            waitpid(pid, NULL, 0);
+            fflush(stdout);
+        }
+    } else {
         std::cerr << "Failed to fork" << std::endl;
+        fflush(stdout);
         return 1;
     }
-    std::cout << "End mync" << std::endl;
+
     return 0;
 }
