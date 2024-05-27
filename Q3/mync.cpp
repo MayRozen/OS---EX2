@@ -145,6 +145,7 @@ int main(int argc, char *argv[]) {
         if (output_set || both_set) {
             dup2(output_sockfd, STDOUT_FILENO);
             close(output_sockfd);
+<<<<<<< HEAD
             fflush(stdout);
         }
         execlp("/bin/sh", "sh", "-c", exec_command.c_str(), (char *)0);
@@ -169,6 +170,26 @@ int main(int argc, char *argv[]) {
             waitpid(pid, NULL, 0);
             fflush(stdout);
         }
+=======
+        }
+        execlp("/bin/sh", "sh", "-c", exec_command.c_str(), (char *)0);
+        std::cerr << "Failed to execute " << exec_command << std::endl;
+        return 1;
+    } else if (pid > 0) {
+        // Parent process
+        if (input_set || both_set) {
+            close(server_sockfd);
+            //handleCommunication(input_sockfd, STDOUT_FILENO);
+            close(input_sockfd);
+        }
+        if (output_set || both_set) {
+            //handleCommunication(STDIN_FILENO, output_sockfd);
+            close(output_sockfd);
+            waitpid(pid, NULL, 0);
+        } else {
+            waitpid(pid, NULL, 0);
+        }
+>>>>>>> c461fba5418456c237132b589a9fc13f5b3ad45d
     } else {
         std::cerr << "Failed to fork" << std::endl;
         fflush(stdout);
