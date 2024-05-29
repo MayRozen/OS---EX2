@@ -114,6 +114,7 @@ int main(int argc, char *argv[]) {
             startTCPServer(port, server_sockfd, client_sockfd);
             input_sockfd = client_sockfd;
             input_set = true;
+            printf("input socket = %d\n",input_sockfd);
         } else if (std::string(argv[i]).substr(0, 5) == "-oTCP") {
             std::string connection = std::string(argv[i]).substr(5); // Fix the index here
             size_t comma_pos = connection.find(',');
@@ -140,6 +141,7 @@ int main(int argc, char *argv[]) {
         // Child process
         if (input_set || both_set) {
             fflush(stdin);
+            close(0);
             if (dup2(input_sockfd, STDIN_FILENO) < 0) {
                 std::cerr << "Failed to redirect stdin" << std::endl;
                 exit(1);
