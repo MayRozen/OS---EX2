@@ -9,10 +9,23 @@
 #include <unistd.h>
 #include <csignal>
 #include <sys/wait.h>
+#include <sstream>
+#include <string>
 
 void error(const char *msg) {
     perror(msg);
     exit(1);
+}
+
+int stringToInt(const std::string& str) {
+    std::istringstream iss(str);
+    int value;
+    if (!(iss >> value)) {
+        // Handle the conversion failure here
+        std::cerr << "Error: Invalid integer string - " << str << std::endl;
+        exit(1);
+    }
+    return value;
 }
 
 void startTCPServer(int port, int &server_sockfd, int &client_sockfd) {
@@ -109,21 +122,21 @@ int main(int argc, char *argv[]) {
         if (std::string(argv[i]) == "-e" && i + 1 < argc) {
             exec_command = argv[++i];
         } 
-        else if (std::string(argv[i]).substr(0, 5) == "-oTCP") {
-            int port = std::stoi(std::string(argv[i]).substr(5));
-            startTCPServer(port, server_sockfd, client_sockfd);
-            input_sockfd = client_sockfd;
-            input_set = true;
-            printf("input socket = %d\n",input_sockfd);
-        } else if (std::string(argv[i]).substr(0, 5) == "-oTCP") {
-            std::string connection = std::string(argv[i]).substr(5); // Fix the index here
-            size_t comma_pos = connection.find(',');
-            std::string hostname = connection.substr(0, comma_pos);
-            int port = std::stoi(connection.substr(comma_pos + 1));
-            startTCPClient(hostname.c_str(), port, output_sockfd);
-            output_set = true;
-        } else if (std::string(argv[i]).substr(0, 5) == "-bTCP") {
-            int port = std::stoi(std::string(argv[i]).substr(5));
+        // else if (std::string(argv[i]).substr(0, 5) == "-oTCP") {
+        //     int port = std::stoi(std::string(argv[i]).substr(5));
+        //     startTCPServer(port, server_sockfd, client_sockfd);
+        //     input_sockfd = client_sockfd;
+        //     input_set = true;
+        //     printf("input socket = %d\n",input_sockfd);
+        // } else if (std::string(argv[i]).substr(0, 5) == "-oTCP") {
+        //     std::string connection = std::string(argv[i]).substr(5); // Fix the index here
+        //     size_t comma_pos = connection.find(',');
+        //     std::string hostname = connection.substr(0, comma_pos);
+        //     int port = std::stoi(connection.substr(comma_pos + 1));
+        //     startTCPClient(hostname.c_str(), port, output_sockfd);
+        //     output_set = true;
+        else if (std::string(argv[i]).substr(0, 5) == "-bTCP") {
+            int port = stringToInt(argv[1]);
             startTCPServer(port, server_sockfd, client_sockfd);
             input_sockfd = client_sockfd;
             output_sockfd = client_sockfd;
