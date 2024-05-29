@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
         if (std::string(argv[i]) == "-e" && i + 1 < argc) {
             exec_command = argv[++i];
         } 
-        else if (std::string(argv[i]).substr(0, 5) == "-oTCP") {
+        else if (std::string(argv[i]).substr(0, 5) == "-iTCP") {
             int port = std::stoi(std::string(argv[i]).substr(5));
             startTCPServer(port, server_sockfd, client_sockfd);
             input_sockfd = client_sockfd;
