@@ -22,13 +22,13 @@ bool checkWin(const vector<char>& gameBoard, char player) {
 
 // Checking the comStrategy
 bool isValidStrategy(const string& comStrategy) {
-    if (comStrategy.length() != 9){ // More or less from 9
-         return false;
+    if (comStrategy.length() != 9) { // Must be exactly 9
+        return false;
     }
     unordered_set<char> digits;
-    for (char c : comStrategy) { // Checking if all the digits is between 1 to 9
-        if (c < '1' || c > '9'){
-             return false;
+    for (char c : comStrategy) { // Checking if all the digits are between 1 and 9
+        if (c < '1' || c > '9') {
+            return false;
         }
         digits.insert(c);
     }
@@ -39,7 +39,7 @@ bool isValidStrategy(const string& comStrategy) {
 int findNextMove(const vector<char>& gameBoard, const string& comStrategy) {
     for (char c : comStrategy) {
         size_t pos = (size_t)(c - '1');
-        if (gameBoard[pos] == false) {
+        if (gameBoard[pos] == ' ') {
             return pos;
         }
     }
@@ -48,41 +48,45 @@ int findNextMove(const vector<char>& gameBoard, const string& comStrategy) {
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
-        cout << "Error: too much arguments" << endl;
-        return 1;
+        cout << "Error: incorrect number of arguments" << endl;
+        return -1;
     }
 
     string comStrategy = argv[1];
-    if (!isValidStrategy(comStrategy)) { // Checking if the strategy meets the requirments
+    if (!isValidStrategy(comStrategy)) { // Checking if the strategy meets the requirements
         cout << "Error: strategy is invalid" << endl;
-        return 1;
+        return -1;
     }
 
-    if(strlen(argv[1])!=9){
+    if (strlen(argv[1]) != 9) {
         cout << "Error: input is too long" << endl;
-        return 1;
+        return -1;
     }
 
-    vector<char> gameBoard(9, false);  // Creating the game board and resseting its values to false
+    vector<char> gameBoard(9, ' ');  // Creating the game board and initializing it with spaces
     char computer = 'X';
     char human = 'O';
 
-    // The game start and the computer do the first turn
-    size_t move = (size_t)comStrategy[0] - '1'; // The MSB from the input
-    gameBoard[move] = computer; // Sign the computer's turn on the game board
-    cout << move + 1 << endl; // Move forward the next possition on the board
+    // The game starts and the computer makes the first move
+    size_t move = (size_t)comStrategy[0] - '1'; // The first position from the strategy
+    gameBoard[move] = computer; // Mark the computer's move on the game board
+    cout << move + 1 << endl; // Output the position of the move
 
     while (true) {
         size_t humanMove;
         cin >> humanMove;
+        if (humanMove < 1 || humanMove > 9) {
+            cout << "Error: human move is invalid" << endl;
+            return -1;
+        }
         humanMove -= 1;
 
-        if (humanMove < 1 || humanMove > 9 || gameBoard[humanMove] != false) {
-            cout << "Error: humanMove is invalid" << endl;
-            return 1;
+        if (gameBoard[humanMove] != ' ') {
+            cout << "Error: position is taken" << endl;
+            return 0;
         }
 
-        gameBoard[humanMove] = human; // After every turn check if there is a winner
+        gameBoard[humanMove] = human; // After every turn, check if there is a winner
         if (checkWin(gameBoard, human)) {
             cout << "I lost" << endl;
             return 0;
@@ -96,6 +100,7 @@ int main(int argc, char* argv[]) {
 
         gameBoard[move] = computer;
         cout << move + 1 << endl;
+        
         if (checkWin(gameBoard, computer)) {
             cout << "I win" << endl;
             return 0;

@@ -21,7 +21,7 @@ void startTCPServer(int port, int &server_sockfd, int &client_sockfd) {
     struct sockaddr_in serv_addr, cli_addr;
     socklen_t clilen;
 
-    server_sockfd = socket(AF_INET, SOCK_STREAM, 0); // Creating a socket
+    server_sockfd = socket(AF_INET, SOCK_DGRAM, 0); // Creating a socket
     if (server_sockfd < 0) {
         error("Error: opening socket");
     }
