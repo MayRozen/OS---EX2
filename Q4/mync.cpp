@@ -21,7 +21,7 @@ void startTCPServer(int port, int &server_sockfd, int &client_sockfd) {
     struct sockaddr_in serv_addr, cli_addr;
     socklen_t clilen;
 
-    server_sockfd = socket(AF_INET, SOCK_DGRAM, 0); // Creating a socket
+    server_sockfd = socket(AF_INET, SOCK_STREAM, 0); // Creating a socket
     if (server_sockfd < 0) {
         error("Error: opening socket");
     }
@@ -53,6 +53,39 @@ void startTCPServer(int port, int &server_sockfd, int &client_sockfd) {
     std::cout << "accept() success!" << std::endl;
 }
 
+void startTCPClient(const char *hostname, int port, int &sockfd) {
+    std::cout << "Starting TCP Client..." << std::endl;
+
+    struct sockaddr_in serv_addr;
+    struct hostent *server;
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0); // Creating socket
+    if (sockfd < 0) {
+        error("Error: opening socket");
+    }
+    std::cout << "Socket is created successfully!" << std::endl;
+
+    server = gethostbyname(hostname);
+    if (server == NULL) {
+        std::cerr << "Error: no such host" << std::endl;
+        exit(0);
+    }
+    // Set SO_REUSEADDR socket option
+    int opt = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        error("Error: setting socket option");
+    }
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy((char*)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, (size_t)server->h_length);
+    serv_addr.sin_port = htons(port);
+
+    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+        error("Error: connecting");
+    }
+    std::cout << "connect() success!" << std::endl;
+}
+
 void handleCommunication(int input_fd, int output_fd) {
     char buffer[256];
     ssize_t n;
@@ -76,7 +109,7 @@ int main(int argc, char *argv[]) {
         if (std::string(argv[i]) == "-e" && i + 1 < argc) {
             exec_command = argv[++i];
         } 
-        else if (std::string(argv[i]).substr(0, 5) == "-iTCP") {
+        else if (std::string(argv[i]).substr(0, 5) == "-oTCP") {
             int port = std::stoi(std::string(argv[i]).substr(5));
             startTCPServer(port, server_sockfd, client_sockfd);
             input_sockfd = client_sockfd;
@@ -87,6 +120,7 @@ int main(int argc, char *argv[]) {
             size_t comma_pos = connection.find(',');
             std::string hostname = connection.substr(0, comma_pos);
             int port = std::stoi(connection.substr(comma_pos + 1));
+            startTCPClient(hostname.c_str(), port, output_sockfd);
             output_set = true;
         } else if (std::string(argv[i]).substr(0, 5) == "-bTCP") {
             int port = std::stoi(std::string(argv[i]).substr(5));

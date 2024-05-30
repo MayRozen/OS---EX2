@@ -111,32 +111,17 @@ void handleCommunication(int input_fd, int output_fd) {
         if (n < 0) error("Error: writing to socket");
     }
 }
-
 int main(int argc, char *argv[]) {
     int input_sockfd = -1, output_sockfd = -1;
     int server_sockfd = -1, client_sockfd = -1;
     std::string exec_command;
     bool input_set = false, output_set = false, both_set = false;
 
-    for (int i = 1; i < argc; ++i) { // Start from 1 to skip the program name
+     for (int i = 1; i < argc; ++i) { // Start from 1 to skip the program name
         if (std::string(argv[i]) == "-e" && i + 1 < argc) {
             exec_command = argv[++i];
-        } 
-        // else if (std::string(argv[i]).substr(0, 5) == "-oTCP") {
-        //     int port = std::stoi(std::string(argv[i]).substr(5));
-        //     startTCPServer(port, server_sockfd, client_sockfd);
-        //     input_sockfd = client_sockfd;
-        //     input_set = true;
-        //     printf("input socket = %d\n",input_sockfd);
-        // } else if (std::string(argv[i]).substr(0, 5) == "-oTCP") {
-        //     std::string connection = std::string(argv[i]).substr(5); // Fix the index here
-        //     size_t comma_pos = connection.find(',');
-        //     std::string hostname = connection.substr(0, comma_pos);
-        //     int port = std::stoi(connection.substr(comma_pos + 1));
-        //     startTCPClient(hostname.c_str(), port, output_sockfd);
-        //     output_set = true;
-        else if (std::string(argv[i]).substr(0, 5) == "-bTCP") {
-            int port = stringToInt(argv[1]);
+        } else if (std::string(argv[i]).substr(0, 5) == "-bTCP") {
+            int port = std::stoi(std::string(argv[i]).substr(5));
             startTCPServer(port, server_sockfd, client_sockfd);
             input_sockfd = client_sockfd;
             output_sockfd = client_sockfd;
@@ -148,47 +133,27 @@ int main(int argc, char *argv[]) {
         std::cerr << "No execution command provided." << std::endl;
         return 1;
     }
-    
-    pid_t pid = fork();
-    if (pid == 0) {
-        // Child process
-        if (input_set || both_set) {
-            fflush(stdin);
-            close(0);
-            if (dup2(input_sockfd, STDIN_FILENO) < 0) {
-                std::cerr << "Failed to redirect stdin" << std::endl;
-                exit(1);
-            }
-            close(input_sockfd);
+
+    if (both_set) {
+        fflush(stdout);
+        close(1);  // Close stdout
+        if (dup2(output_sockfd, STDOUT_FILENO) < 0) {
+            std::cerr << "Failed to redirect stdout" << std::endl;
+            exit(1);
         }
-        if (output_set || both_set) {
-            fflush(stdout);
-            if (dup2(output_sockfd, STDOUT_FILENO) < 0) {
-                std::cerr << "Failed to redirect stdout" << std::endl;
-                exit(1);
-            }
-            close(output_sockfd);
-        }
-        execlp("/bin/sh", "sh", "-c", exec_command.c_str(), (char *)0);
+        close(output_sockfd);
+    }
+
+    // Prepare arguments for execvp
+    const char *cmd = exec_command.c_str();
+    const char *args[] = {"/bin/sh", "-c", cmd, NULL};
+
+    // Execute the command
+    int ececvpNum = execvp(args[0], const_cast<char *const *>(args));
+    if(ececvpNum == -1){
         std::cerr << "Failed to execute " << exec_command << std::endl;
         exit(1);
-    } 
-    else if (pid > 0) {
-        // Parent process
-        if (input_set || both_set) {
-            fflush(stdin);
-            close(server_sockfd);
-            close(input_sockfd);
-        }
-        if (output_set || both_set) {
-            fflush(stdout);
-            close(output_sockfd);
-        }
-        waitpid(pid, NULL, 0);
-    } 
-    else {
-        std::cerr << "Failed to fork" << std::endl;
-        exit(1);
     }
+
     return 0;
 }
