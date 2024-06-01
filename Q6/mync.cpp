@@ -11,8 +11,10 @@
 #include <sys/wait.h>
 #include <cstdlib>
 #include <sys/un.h>
+#include <filesystem>
 
 using namespace std;
+//namespace fs = std::filesystem;
 
 void error(const char *msg) {
     perror(msg);
@@ -21,77 +23,6 @@ void error(const char *msg) {
 
 void alarm_handler(int signum) {
     exit(0);
-}
-
-void startTCPServer(int port, int &server_sockfd, int &client_sockfd) {
-    std::cout << "Starting TCP Server..." << std::endl;
-
-    struct sockaddr_in serv_addr, cli_addr;
-    socklen_t clilen;
-
-    server_sockfd = socket(AF_INET, SOCK_STREAM, 0); // Creating a socket
-    if (server_sockfd < 0) {
-        error("Error: opening socket");
-    }
-    std::cout << "Socket is created successfully!" << std::endl;
-
-    // Set SO_REUSEADDR socket option
-    int opt = 1;
-    if (setsockopt(server_sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        error("Error: setting socket option");
-    }
-
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(port);
-
-    if (bind(server_sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-        error("Error: on binding");
-    }
-    std::cout << "bind() success!" << std::endl;
-
-    listen(server_sockfd, 5);
-    std::cout << "listening..." << std::endl;
-    clilen = sizeof(cli_addr);
-    client_sockfd = accept(server_sockfd, (struct sockaddr *) &cli_addr, &clilen);
-    if (client_sockfd < 0) {
-        error("Error: on accept");
-    }
-    std::cout << "accept() success!" << std::endl;
-}
-
-void startTCPClient(const char *hostname, int port, int &sockfd) {
-    cout << "Starting TCP Client..." << endl;
-
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0); // Creating socket
-    if (sockfd < 0) {
-        error("Error: opening socket");
-    }
-    cout << "Socket is created successfully!" << endl;
-
-    server = gethostbyname(hostname);
-    if (server == NULL) {
-        cerr << "Error: no such host" << endl;
-        exit(0);
-    }
-    // Set SO_REUSEADDR socket option
-    int opt = 1;
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        error("Error: setting socket option");
-    }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char*)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, (size_t)server->h_length);
-    serv_addr.sin_port = htons(port);
-
-    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-        error("Error: connecting");
-    }
-    cout << "connect() success!" << endl;
 }
 
 void handle_unix_domain_server_datagram(const std::string& path) {
@@ -106,9 +37,10 @@ void handle_unix_domain_server_datagram(const std::string& path) {
     serv_addr.sun_family = AF_UNIX;
     strncpy(serv_addr.sun_path, path.c_str(), sizeof(serv_addr.sun_path) - 1);
 
-    unlink(path.c_str());
+    unlink(path.c_str());  // Unlink the path before binding
     if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
         close(sockfd);
+        unlink(path.c_str());
         error("ERROR on binding");
     }
     return;
@@ -128,6 +60,7 @@ void handle_unix_domain_client_stream(const std::string& path) {
 
     if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
         close(sockfd);
+        unlink(path.c_str());
         error("ERROR connecting");
     }
 
@@ -137,11 +70,11 @@ void handle_unix_domain_client_stream(const std::string& path) {
         int n = write(sockfd, buffer, strlen(buffer));
         if (n < 0) {
             close(sockfd);
+            unlink(path.c_str());
             error("ERROR writing to socket");
         }
     }
 }
-
 
 void handle_unix_domain_client_datagram(const std::string& path) {
     int sockfd;
@@ -161,6 +94,7 @@ void handle_unix_domain_client_datagram(const std::string& path) {
         int n = sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
         if (n < 0) {
             close(sockfd);
+            unlink(path.c_str());
             error("ERROR on sendto");
         }
     }
@@ -179,9 +113,10 @@ void handle_unix_domain_server_stream(const std::string& path) {
     serv_addr.sun_family = AF_UNIX;
     strncpy(serv_addr.sun_path, path.c_str(), sizeof(serv_addr.sun_path) - 1);
 
-    unlink(path.c_str());
+    unlink(path.c_str());  // Unlink the path before binding
     if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
         close(sockfd);
+        unlink(path.c_str());
         error("ERROR on binding");
     }
 
@@ -189,6 +124,7 @@ void handle_unix_domain_server_stream(const std::string& path) {
     clilen = sizeof(cli_addr);
     if ((newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen)) < 0) {
         close(sockfd);
+        unlink(path.c_str());
         error("ERROR on accept");
     }
     return;
@@ -205,6 +141,11 @@ int main(int argc, char *argv[]) {
 
     cout << "mode: " <<  mode << endl;
     cout << "path: " << path << endl;
+
+     // Use a subdirectory for Unix domain sockets
+    std::string socket_dir = "/tmp/unix_sockets/";
+    // std::filesystem create_directories(socket_dir);
+    std::string socket_path = socket_dir + path;
 
     if (mode == "-i" && path.rfind("UDSSD", 0) == 0) {
         handle_unix_domain_server_datagram(path.substr(5));
