@@ -111,17 +111,7 @@ void handle_unix_domain_server_datagram(const std::string& path) {
         close(sockfd);
         error("ERROR on binding");
     }
-
-    char buffer[256];
-    while (true) {
-        memset(buffer, 0, 256);
-        int n = recvfrom(sockfd, buffer, 255, 0, NULL, NULL);
-        if (n < 0) {
-            close(sockfd);
-            error("ERROR on recvfrom");
-        }
-        std::cout << buffer << std::endl;
-    }
+    return;
 }
 
 void handle_unix_domain_client_stream(const std::string& path) {
@@ -201,100 +191,36 @@ void handle_unix_domain_server_stream(const std::string& path) {
         close(sockfd);
         error("ERROR on accept");
     }
-
-    char buffer[256];
-    while (true) {
-        memset(buffer, 0, 256);
-        int n = read(newsockfd, buffer, 255);
-        if (n < 0) {
-            close(newsockfd);
-            close(sockfd);
-            error("ERROR reading from socket");
-        }
-        std::cout << buffer << std::endl;
-    }
-}
-
-void handleCommunication(int input_fd, int output_fd) {
-    char buffer[256];
-    ssize_t n;
-
-    while (true) {
-        bzero(buffer, 256);
-        n = read(input_fd, buffer, 255);
-        if (n <= 0) break;  // Exit loop if connection is closed or error occurs
-        n = write(output_fd, buffer, strlen(buffer));
-        if (n < 0) error("Error: writing to socket");
-    }
+    return;
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 4) {
-        std::cerr << "Usage: " << argv[0] << " -e <command> [options]" << std::endl;
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <mode> <path>" << std::endl;
         return 1;
     }
 
-    std::string mode = argv[3];
-    std::string path_or_address = argv[4];
-    cout << "Mode: " << mode << endl;
-    cout << "Path or Address: " << path_or_address << endl;
+    std::string mode = argv[1];
+    std::string path = argv[2];
 
-   int input_sockfd = -1, output_sockfd = -1;
-    int server_sockfd = -1, client_sockfd = -1;
-    std::string exec_command;
-    bool input_set = false, output_set = false, both_set = false;
+    cout << "mode: " <<  mode << endl;
+    cout << "path: " << path << endl;
 
-    for (int i = 1; i < argc; ++i) { // Start from 1 to skip the program name
-        if (std::string(argv[i]) == "-e" && i + 1 < argc) {
-            exec_command = argv[++i];
-        } 
-        else if (std::string(argv[i]).substr(0, 5) == "UDSSD") {
-            int port = std::stoi(std::string(argv[i]).substr(5));
-            startTCPServer(port, server_sockfd, client_sockfd);
-            input_sockfd = client_sockfd;
-            input_set = true;
-            printf("input socket = %d\n",input_sockfd);
-        } 
-        else if (std::string(argv[i]).substr(0, 5) == "UDSCD") {
-            std::string connection = std::string(argv[i]).substr(5); // Fix the index here
-            size_t comma_pos = connection.find(',');
-            std::string hostname = connection.substr(0, comma_pos);
-            int port = std::stoi(connection.substr(comma_pos + 1));
-            output_set = true;
-        } 
-        else if (std::string(argv[i]).substr(0, 5) == "UDSSD") {
-            int port = std::stoi(std::string(argv[i]).substr(5));
-            startTCPServer(port, server_sockfd, client_sockfd);
-            input_sockfd = client_sockfd;
-            output_sockfd = client_sockfd;
-            both_set = true;
-        }
-    }
-
-    if (exec_command.empty()) {
-        std::cerr << "No execution command provided." << std::endl;
-        return 1;
-    }
-
-    else if (mode == "-i" && path_or_address.rfind("UDSSD", 0) == 0) {
-        handle_unix_domain_server_datagram(path_or_address.substr(5));
-    }
-
-    else if (mode == "-o" && path_or_address.rfind("UDSCD", 0) == 0) {
-        handle_unix_domain_client_datagram(path_or_address.substr(5));
+    if (mode == "-i" && path.rfind("UDSSD", 0) == 0) {
+        handle_unix_domain_server_datagram(path.substr(5));
     } 
-
-    else if (mode == "-i" && path_or_address.rfind("UDSSS", 0) == 0) {
-        handle_unix_domain_server_stream(path_or_address.substr(5));
+    else if (mode == "-o" && path.rfind("UDSCD", 0) == 0) {
+        handle_unix_domain_client_datagram(path.substr(5));
     } 
-    
-    else if (mode == "-o" && path_or_address.rfind("UDSCS", 0) == 0) {
-        handle_unix_domain_client_stream(path_or_address.substr(5));
+    else if (mode == "-i" && path.rfind("UDSSS", 0) == 0) {
+        handle_unix_domain_server_stream(path.substr(5));
+    } 
+    else if (mode == "-o" && path.rfind("UDSCS", 0) == 0) {
+        handle_unix_domain_client_stream(path.substr(5));
     } 
     else {
         std::cerr << "Invalid mode or path" << std::endl;
         return 1;
     }
-
     return 0;
 }

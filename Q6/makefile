@@ -26,11 +26,11 @@ $(TTT_TARGET): $(TTT_OBJS)
 
 # Rule to run the TCP server on port 4050
 run_server: $(TARGET) $(TTT_TARGET)
-	./$(TARGET) -e "./ttt 123456789" -i UDSSD/home/hadarfro/Desktop/OS---EX2/ttt.cpp
+	./$(TARGET) -i UDSSS/home/hadarfro/Desktop/OS---EX2/ttt.cpp
 
 # Rule to run the TCP client connecting to localhost and port 4050
 run_client: $(TARGET) $(TTT_TARGET)
-	./$(TARGET) -oTCPlocalhost,4050 -e "./ttt 234567891"
+	nc -U/home/hadarfro/Desktop/OS---EX2/ttt.cpp
 
 clean:
 	rm -f $(TARGET) $(TTT_TARGET) $(OBJS) $(TTT_OBJS)
