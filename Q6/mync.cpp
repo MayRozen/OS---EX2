@@ -162,13 +162,26 @@ int main(int argc, char *argv[]) {
     cout << "mode: " <<  mode << endl;
     cout << "path: " << path << endl;
 
-     // Use a subdirectory for Unix domain sockets
+    // Use a subdirectory for Unix domain sockets
     std::string socket_dir = "/tmp/unix_sockets/";
     std::string socket_path = socket_dir + path;
 
     if (mode == "-i" && path.rfind("UDSSD", 0) == 0) {
         handle_unix_domain_server_datagram(path.substr(5));
         handle_unix_domain_server_stream(path.substr(5));
+
+        // Receive input from client
+        char buffer[256];
+        int n = read(STDIN_FILENO, buffer, sizeof(buffer));
+        if (n <= 0) {
+            error("ERROR reading from socket");
+        }
+        buffer[n] = '\0';
+
+        // Execute ttt program with input
+        std::string command = "./ttt ";
+        command += buffer;  // Append input to the command
+        system(command.c_str());
     } 
     else if (mode == "-o" && path.rfind("UDSCD", 0) == 0) {
         handle_unix_domain_client_datagram(path.substr(5));
