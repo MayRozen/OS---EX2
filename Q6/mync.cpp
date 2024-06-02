@@ -1,28 +1,19 @@
 #include <iostream>
-#include <string>
-#include <cstring>
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <csignal>
 #include <sys/wait.h>
-#include <cstdlib>
 #include <sys/un.h>
 #include <filesystem>
 
 using namespace std;
-#define MAX_COMMAND_LENGTH 1000
 
 void error(const char *msg) {
     perror(msg);
     exit(1);
-}
-
-void alarm_handler(int signum) {
-    exit(0);
 }
 
 void handle_unix_domain_client_stream(const std::string& path) {
