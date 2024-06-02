@@ -14,7 +14,7 @@
 #include <filesystem>
 
 using namespace std;
-//namespace fs = std::filesystem;
+#define MAX_COMMAND_LENGTH 1000
 
 void error(const char *msg) {
     perror(msg);
@@ -32,6 +32,7 @@ void handle_unix_domain_server_datagram(const std::string& path) {
     if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
         error("ERROR opening socket");
     }
+    cout << "datagram socket() success! " << path << endl;
 
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sun_family = AF_UNIX;
@@ -43,7 +44,7 @@ void handle_unix_domain_server_datagram(const std::string& path) {
         unlink(path.c_str());
         error("ERROR on binding");
     }
-    return;
+    cout << "datagram bind() success! " << path << endl;
 }
 
 void handle_unix_domain_client_stream(const std::string& path) {
@@ -53,6 +54,7 @@ void handle_unix_domain_client_stream(const std::string& path) {
     if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
         error("ERROR opening socket");
     }
+    cout << "stream socket() success! " << path << endl;
 
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sun_family = AF_UNIX;
@@ -63,6 +65,7 @@ void handle_unix_domain_client_stream(const std::string& path) {
         unlink(path.c_str());
         error("ERROR connecting");
     }
+    cout << "stream connect() success! " << path << endl;
 
     char buffer[256];
     while (true) {
@@ -83,21 +86,23 @@ void handle_unix_domain_client_datagram(const std::string& path) {
     if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
         error("ERROR opening socket");
     }
+    cout << "datagram socket() success!" << path << endl;
+    return;
 
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sun_family = AF_UNIX;
-    strncpy(serv_addr.sun_path, path.c_str(), sizeof(serv_addr.sun_path) - 1);
+    // memset(&serv_addr, 0, sizeof(serv_addr));
+    // serv_addr.sun_family = AF_UNIX;
+    // strncpy(serv_addr.sun_path, path.c_str(), sizeof(serv_addr.sun_path) - 1);
 
-    char buffer[256];
-    while (true) {
-        std::cin.getline(buffer, 256);
-        int n = sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-        if (n < 0) {
-            close(sockfd);
-            unlink(path.c_str());
-            error("ERROR on sendto");
-        }
-    }
+    // char buffer[256];
+    // while (true) {
+    //     std::cin.getline(buffer, 256);
+    //     int n = sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+    //     if (n < 0) {
+    //         close(sockfd);
+    //         unlink(path.c_str());
+    //         error("ERROR on sendto");
+    //     }
+    // }
 }
 
 void handle_unix_domain_server_stream(const std::string& path) {
@@ -108,6 +113,7 @@ void handle_unix_domain_server_stream(const std::string& path) {
     if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
         error("ERROR opening socket");
     }
+    cout << "stream socket() success!" << path << endl;
 
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sun_family = AF_UNIX;
@@ -119,15 +125,29 @@ void handle_unix_domain_server_stream(const std::string& path) {
         unlink(path.c_str());
         error("ERROR on binding");
     }
+    cout << "stream bind() success!" << path << endl;
 
     listen(sockfd, 5);
+    cout << "stream listening..." << path << endl;
     clilen = sizeof(cli_addr);
     if ((newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen)) < 0) {
         close(sockfd);
         unlink(path.c_str());
         error("ERROR on accept");
     }
-    return;
+    cout << "stream accept() success!" << path << endl;
+    char buffer[1024];
+    while (true) {
+        size_t n = (size_t) read(newsockfd, buffer, sizeof(buffer));
+        if (n > 0) {
+            write(STDOUT_FILENO, buffer, n);
+        } else {
+            break;
+        }
+    }
+
+    close(newsockfd);
+    close(sockfd);
 }
 
 int main(int argc, char *argv[]) {
@@ -144,19 +164,14 @@ int main(int argc, char *argv[]) {
 
      // Use a subdirectory for Unix domain sockets
     std::string socket_dir = "/tmp/unix_sockets/";
-    // std::filesystem create_directories(socket_dir);
     std::string socket_path = socket_dir + path;
 
     if (mode == "-i" && path.rfind("UDSSD", 0) == 0) {
         handle_unix_domain_server_datagram(path.substr(5));
+        handle_unix_domain_server_stream(path.substr(5));
     } 
     else if (mode == "-o" && path.rfind("UDSCD", 0) == 0) {
         handle_unix_domain_client_datagram(path.substr(5));
-    } 
-    else if (mode == "-i" && path.rfind("UDSSS", 0) == 0) {
-        handle_unix_domain_server_stream(path.substr(5));
-    } 
-    else if (mode == "-o" && path.rfind("UDSCS", 0) == 0) {
         handle_unix_domain_client_stream(path.substr(5));
     } 
     else {
