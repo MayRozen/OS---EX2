@@ -46,7 +46,7 @@ void handle_unix_domain_client_stream(const std::string& path) {
     cout << "stream connect() success! " << path << endl;
 
     char buffer[256];
-    while (true) {
+    while (true) { // one game
         // Send numbers to server
         int number;
         cout << "Enter 9 numbers: ";
@@ -58,6 +58,10 @@ void handle_unix_domain_client_stream(const std::string& path) {
             unlink(path.c_str());
             error("ERROR writing to socket");
         }
+        // Execute ttt program with the received number as input
+        std::string command = "./ttt ";
+        command += std::to_string(number); // Convert the number to string and append to the command
+        system(command.c_str());
     }
 
     close(sockfd);
@@ -107,10 +111,7 @@ void handle_unix_domain_server_stream(const std::string& path) {
             number = std::stoi(buffer);
             cout << "Received 9 numbers from client: " << number << endl;
 
-            // Execute ttt program with the received number as input
-            std::string command = "./ttt ";
-            command += std::to_string(number); // Convert the number to string and append to the command
-            system(command.c_str());
+            
         } else {
             break;
         }
