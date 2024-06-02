@@ -25,28 +25,6 @@ void alarm_handler(int signum) {
     exit(0);
 }
 
-void handle_unix_domain_server_datagram(const std::string& path) {
-    int sockfd;
-    struct sockaddr_un serv_addr;
-
-    if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
-        error("ERROR opening socket");
-    }
-    cout << "datagram socket() success! " << path << endl;
-
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sun_family = AF_UNIX;
-    strncpy(serv_addr.sun_path, path.c_str(), sizeof(serv_addr.sun_path) - 1);
-
-    unlink(path.c_str());  // Unlink the path before binding
-    if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-        close(sockfd);
-        unlink(path.c_str());
-        error("ERROR on binding");
-    }
-    cout << "datagram bind() success! " << path << endl;
-}
-
 void handle_unix_domain_client_stream(const std::string& path) {
     int sockfd;
     struct sockaddr_un serv_addr;
@@ -69,41 +47,22 @@ void handle_unix_domain_client_stream(const std::string& path) {
 
     char buffer[256];
     while (true) {
-        std::cin.getline(buffer, 256);
-        int n = write(sockfd, buffer, strlen(buffer));
+        // Send numbers to server
+        int number;
+        cout << "Enter 9 numbers: ";
+        cin >> number;
+        std::string number_str = std::to_string(number);
+        int n = write(sockfd, number_str.c_str(), number_str.length());
         if (n < 0) {
             close(sockfd);
             unlink(path.c_str());
             error("ERROR writing to socket");
         }
     }
+
+    close(sockfd);
 }
 
-void handle_unix_domain_client_datagram(const std::string& path) {
-    int sockfd;
-    struct sockaddr_un serv_addr;
-
-    if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
-        error("ERROR opening socket");
-    }
-    cout << "datagram socket() success!" << path << endl;
-    return;
-
-    // memset(&serv_addr, 0, sizeof(serv_addr));
-    // serv_addr.sun_family = AF_UNIX;
-    // strncpy(serv_addr.sun_path, path.c_str(), sizeof(serv_addr.sun_path) - 1);
-
-    // char buffer[256];
-    // while (true) {
-    //     std::cin.getline(buffer, 256);
-    //     int n = sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-    //     if (n < 0) {
-    //         close(sockfd);
-    //         unlink(path.c_str());
-    //         error("ERROR on sendto");
-    //     }
-    // }
-}
 
 void handle_unix_domain_server_stream(const std::string& path) {
     int sockfd, newsockfd;
@@ -136,11 +95,22 @@ void handle_unix_domain_server_stream(const std::string& path) {
         error("ERROR on accept");
     }
     cout << "stream accept() success!" << path << endl;
-    char buffer[1024];
+
+    char buffer[256];
     while (true) {
-        size_t n = (size_t) read(newsockfd, buffer, sizeof(buffer));
+        // Receive numbers from client
+        int number;
+        int n = read(newsockfd, buffer, sizeof(buffer));
         if (n > 0) {
-            write(STDOUT_FILENO, buffer, n);
+            buffer[n] = '\0';
+            // Convert the received string to a number
+            number = std::stoi(buffer);
+            cout << "Received 9 numbers from client: " << number << endl;
+
+            // Execute ttt program with the received number as input
+            std::string command = "./ttt ";
+            command += std::to_string(number); // Convert the number to string and append to the command
+            system(command.c_str());
         } else {
             break;
         }
@@ -149,6 +119,7 @@ void handle_unix_domain_server_stream(const std::string& path) {
     close(newsockfd);
     close(sockfd);
 }
+
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
@@ -167,29 +138,17 @@ int main(int argc, char *argv[]) {
     std::string socket_path = socket_dir + path;
 
     if (mode == "-i" && path.rfind("UDSSD", 0) == 0) {
-        handle_unix_domain_server_datagram(path.substr(5));
-        handle_unix_domain_server_stream(path.substr(5));
-
-        // Receive input from client
-        char buffer[256];
-        int n = read(STDIN_FILENO, buffer, sizeof(buffer));
-        if (n <= 0) {
-            error("ERROR reading from socket");
+            handle_unix_domain_server_stream(path.substr(5));
+            
+            
+        } 
+        else if (mode == "-o" && path.rfind("UDSCD", 0) == 0) {
+            handle_unix_domain_client_stream(path.substr(5));
+        } 
+        else {
+            std::cerr << "Invalid mode or path" << std::endl;
+            return 1;
         }
-        buffer[n] = '\0';
-
-        // Execute ttt program with input
-        std::string command = "./ttt ";
-        command += buffer;  // Append input to the command
-        system(command.c_str());
-    } 
-    else if (mode == "-o" && path.rfind("UDSCD", 0) == 0) {
-        handle_unix_domain_client_datagram(path.substr(5));
-        handle_unix_domain_client_stream(path.substr(5));
-    } 
-    else {
-        std::cerr << "Invalid mode or path" << std::endl;
-        return 1;
-    }
     return 0;
 }
+    
