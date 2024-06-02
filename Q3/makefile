@@ -26,11 +26,11 @@ $(TTT_TARGET): $(TTT_OBJS)
 
 # Rule to run the TCP server on port 4050
 run_server: $(TARGET) $(TTT_TARGET)
-	./$(TARGET) -oTCP4050 -e "./ttt 123456789"
+	./$(TARGET) -bTCP4050 -e "./ttt 123456789"
 
 # Rule to run the TCP client connecting to localhost and port 4050
-run_client: $(TARGET) $(TTT_TARGET)
-	./$(TARGET) -oTCPlocalhost,4050 -e "./ttt 234567891"
+run_client:
+	nc localhost 4050
 
 clean:
 	rm -f $(TARGET) $(TTT_TARGET) $(OBJS) $(TTT_OBJS)
