@@ -1,5 +1,6 @@
 #include <iostream>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -8,6 +9,7 @@
 #include <sys/wait.h>
 #include <sys/un.h>
 #include <filesystem>
+#include <cstring>
 
 using namespace std;
 
@@ -37,7 +39,7 @@ void handle_unix_domain_client_stream(const std::string& path) {
     cout << "stream connect() success! " << path << endl;
 
     char buffer[256];
-    while (true) { // one game
+    while (true) {
         // Send numbers to server
         int number;
         cout << "Enter 9 numbers: ";
@@ -57,7 +59,6 @@ void handle_unix_domain_client_stream(const std::string& path) {
 
     close(sockfd);
 }
-
 
 void handle_unix_domain_server_stream(const std::string& path) {
     int sockfd, newsockfd;
@@ -101,8 +102,6 @@ void handle_unix_domain_server_stream(const std::string& path) {
             // Convert the received string to a number
             number = std::stoi(buffer);
             cout << "Received 9 numbers from client: " << number << endl;
-
-            
         } else {
             break;
         }
@@ -112,6 +111,77 @@ void handle_unix_domain_server_stream(const std::string& path) {
     close(sockfd);
 }
 
+void handle_unix_domain_client_dgram(const std::string& path) {
+    int sockfd;
+    struct sockaddr_un serv_addr;
+
+    if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
+        error("ERROR opening socket");
+    }
+    cout << "dgram socket() success! " << path << endl;
+
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sun_family = AF_UNIX;
+    strncpy(serv_addr.sun_path, path.c_str(), sizeof(serv_addr.sun_path) - 1);
+
+    char buffer[256];
+    while (true) {
+        // Send numbers to server
+        int number;
+        cout << "Enter 9 numbers: ";
+        cin >> number;
+        std::string number_str = std::to_string(number);
+        int n = sendto(sockfd, number_str.c_str(), number_str.length(), 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+        if (n < 0) {
+            close(sockfd);
+            unlink(path.c_str());
+            error("ERROR sending to socket");
+        }
+    }
+
+    close(sockfd);
+}
+
+void handle_unix_domain_server_dgram(const std::string& path) {
+    int sockfd;
+    struct sockaddr_un serv_addr, cli_addr;
+    socklen_t clilen;
+
+    if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0) {
+        error("ERROR opening socket");
+    }
+    cout << "dgram socket() success!" << path << endl;
+
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sun_family = AF_UNIX;
+    strncpy(serv_addr.sun_path, path.c_str(), sizeof(serv_addr.sun_path) - 1);
+
+    unlink(path.c_str());  // Unlink the path before binding
+    if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        close(sockfd);
+        unlink(path.c_str());
+        error("ERROR on binding");
+    }
+    cout << "dgram bind() success!" << path << endl;
+
+    char buffer[256];
+    while (true) {
+        // Receive numbers from client
+        int number;
+        clilen = sizeof(cli_addr);
+        int n = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&cli_addr, &clilen);
+        if (n > 0) {
+            buffer[n] = '\0';
+            // Convert the received string to a number
+            number = std::stoi(buffer);
+            cout << "Received 9 numbers from client: " << number << endl;
+        } else {
+            break;
+        }
+    }
+
+    close(sockfd);
+}
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
@@ -122,7 +192,7 @@ int main(int argc, char *argv[]) {
     std::string mode = argv[1];
     std::string path = argv[2];
 
-    cout << "mode: " <<  mode << endl;
+    cout << "mode: " << mode << endl;
     cout << "path: " << path << endl;
 
     // Use a subdirectory for Unix domain sockets
@@ -130,17 +200,17 @@ int main(int argc, char *argv[]) {
     std::string socket_path = socket_dir + path;
 
     if (mode == "-i" && path.rfind("UDSSD", 0) == 0) {
-            handle_unix_domain_server_stream(path.substr(5));
-            
-            
-        } 
-        else if (mode == "-o" && path.rfind("UDSCD", 0) == 0) {
-            handle_unix_domain_client_stream(path.substr(5));
-        } 
-        else {
-            std::cerr << "Invalid mode or path" << std::endl;
-            return 1;
-        }
+        handle_unix_domain_server_stream(path.substr(5));
+    } else if (mode == "-o" && path.rfind("UDSCD", 0) == 0) {
+        handle_unix_domain_client_stream(path.substr(5));
+    } else if (mode == "-id" && path.rfind("UDSSD", 0) == 0) {
+        handle_unix_domain_server_dgram(path.substr(5));
+    } else if (mode == "-od" && path.rfind("UDSCD", 0) == 0) {
+        handle_unix_domain_client_dgram(path.substr(5));
+    } else {
+        std::cerr << "Invalid mode or path" << std::endl;
+        return 1;
+    }
+
     return 0;
 }
-    
