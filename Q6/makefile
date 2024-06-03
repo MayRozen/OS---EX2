@@ -32,7 +32,15 @@ run_server: $(TARGET) $(TTT_TARGET)
 run_client: 
 	./mync -o UDSCD/home/mayrozen/Downloads/study/OS/OS - EX2/exe6/ttt.cpp
 
-clean:
-	rm -f $(TARGET) $(TTT_TARGET) $(OBJS) $(TTT_OBJS)
+# Rule to run the datagram server
+run_server_dgram: $(TARGET) $(TTT_TARGET)
+	./$(TARGET) -id /home/mayrozen/Downloads/study/OS/OS - EX2/exe6/ttt.cpp
+
+# Rule to run the datagram client
+run_client_dgram: 
+	./$(TARGET) -od /home/mayrozen/Downloads/study/OS/OS - EX2/exe6/ttt.cpp
 
 .PHONY: all clean run_server run_client
+
+clean:
+	rm -f $(TARGET) $(TTT_TARGET) $(OBJS) $(TTT_OBJS)
